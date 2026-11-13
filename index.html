@@ -17,6 +17,29 @@
       <button type="button" class="g" id="theme" aria-label="Cambiar tema">Tema</button>
     </header>
 
+    <section class="card" aria-labelledby="carga-title">
+      <div class="f between">
+        <h2 id="carga-title">Carga diaria</h2>
+        <span class="s" id="src" aria-live="polite"></span>
+      </div>
+      <p class="s">Subí el <strong>export.csv</strong> de calidad y el <strong>PLAN MPR.pdf</strong>. Se cruzan por nombre de nodo (patas L/R → nodo base si hay calidad).</p>
+      <div class="upload-grid">
+        <label class="file">
+          <span class="file-l">1. Calidad (export.csv)</span>
+          <input type="file" id="f-csv" accept=".csv,text/csv">
+        </label>
+        <label class="file">
+          <span class="file-l">2. Plan (PLAN MPR.pdf)</span>
+          <input type="file" id="f-pdf" accept=".pdf,application/pdf">
+        </label>
+        <div class="f">
+          <button type="button" id="load">Cruzar archivos</button>
+          <button type="button" class="g" id="reset-data">Volver al dataset de ejemplo</button>
+        </div>
+      </div>
+      <p class="s" id="load-msg" role="status"></p>
+    </section>
+
     <section class="card" aria-labelledby="resumen-title">
       <div class="f between">
         <h2 id="resumen-title">Resumen</h2>
@@ -135,7 +158,9 @@
     </section>
   </main>
 
+  <script src="vendor/pdf.min.js"></script>
   <script src="data.js"></script>
+  <script src="import.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

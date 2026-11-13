@@ -137,8 +137,40 @@ h2 {
 
 .tw.short { max-height: 260px; }
 
+.upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.file {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.file input[type="file"] {
+  width: 100%;
+  background: var(--bg);
+  color: var(--tx);
+  border: 1px dashed var(--bd);
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+}
+
+.file-l { font-weight: 650; color: var(--tx); }
+
+#load-msg.ok { color: var(--ok); }
+#load-msg.err { color: var(--danger); }
+
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; }
+  .upload-grid { grid-template-columns: 1fr; }
 }
 
 .card {
