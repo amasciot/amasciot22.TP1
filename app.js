@@ -25,7 +25,6 @@
   const $ = (id) => document.getElementById(id);
   const COL = ["#1f6feb", "#d9480f", "#2b8a3e", "#9c36b5", "#c2255c", "#0b7285", "#e67700", "#5f3dc4", "#495057", "#a61e4d"];
   const LIMIT = 300;
-  const CHART_LIMIT = 10;
   const STORE_KEY = "nodos-plan-calidad-v2";
 
   const MET_LABELS = {
@@ -414,11 +413,11 @@
     const m = +$("mt").value;
     syncMetricHeader();
     $("sn").textContent = S.length
-      ? `${S.length} nodos · círculo = tarea completada del plan`
-      : "Seleccioná nodos en la lista";
+      ? `${S.length} seleccionados en el gráfico · círculo = tarea completada · clic en leyenda para quitar`
+      : "Seleccioná nodos en la lista (solo esas se grafican)";
 
     if (!S.length) {
-      $("ch").innerHTML = '<p class="s">Elegí uno o más nodos para ver la evolución.</p>';
+      $("ch").innerHTML = '<p class="s">Sin selección: el gráfico está vacío. Marcá nodos en la lista.</p>';
       $("lg").innerHTML = "";
       $("dt").innerHTML = "";
       $("kpis").hidden = true;
@@ -427,15 +426,12 @@
       return;
     }
 
-    const chartNodes = S.slice(0, CHART_LIMIT);
-    $("ch").innerHTML =
-      svg(chartNodes, m) +
-      (S.length > CHART_LIMIT
-        ? `<p class="s" style="margin-top:8px">Gráfico: primeros ${CHART_LIMIT} de ${S.length}. La tabla incluye todos.</p>`
-        : "");
-    $("lg").innerHTML =
-      chartNodes.map((k, i) => `<span><i style="background:${COL[i % 10]}"></i>${k}</span>`).join("") +
-      (S.length > CHART_LIMIT ? `<span class="s">+${S.length - CHART_LIMIT} más en la tabla</span>` : "");
+    // Solo nodos actualmente en `sel` — se redibuja entero al cambiar la selección.
+    $("ch").innerHTML = svg(S, m);
+    $("lg").innerHTML = S.map(
+      (k, i) =>
+        `<button type="button" class="leg" data-k="${k}" title="Quitar del gráfico"><i style="background:${COL[i % COL.length]}"></i>${k}</button>`
+    ).join("");
 
     kpis(S, m);
 
@@ -706,6 +702,7 @@
 
   $("pick-linked").onclick = () => {
     setCovMode("linked");
+    sel.clear();
     linkedKeys.forEach((k) => sel.add(k));
     all();
   };
@@ -713,6 +710,8 @@
   $("dl-unmatched").onclick = downloadUnmatched;
 
   $("sa").onclick = () => {
+    // Reemplaza la selección: el gráfico solo muestra lo visible ahora.
+    sel.clear();
     vis.forEach((k) => sel.add(k));
     all();
   };
@@ -720,6 +719,13 @@
     sel.clear();
     all();
   };
+
+  $("lg").addEventListener("click", (e) => {
+    const btn = e.target.closest("button.leg[data-k]");
+    if (!btn) return;
+    sel.delete(btn.dataset.k);
+    all();
+  });
 
   ["q", "ct", "es", "ts", "lk", "only"].forEach((id) => {
     $(id).addEventListener("input", () => {

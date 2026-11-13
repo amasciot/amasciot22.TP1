@@ -361,7 +361,7 @@ tr.on { background: color-mix(in srgb, var(--ac) 14%, transparent); }
 .lg {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   margin-top: 8px;
   font-size: 12px;
 }
@@ -372,6 +372,22 @@ tr.on { background: color-mix(in srgb, var(--ac) 14%, transparent); }
   height: 10px;
   border-radius: 50%;
   margin-right: 4px;
+}
+
+button.leg {
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  color: var(--tx);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.leg:hover {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--bd));
+  color: var(--danger);
 }
 
 .ids { color: var(--mut); font-size: 12px; }
