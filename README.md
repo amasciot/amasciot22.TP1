@@ -14,7 +14,7 @@ Abrí `index.html` en el navegador (o serví la carpeta con cualquier static ser
 
 ## Qué hace
 
-- **Resumen**: cobertura plan↔calidad, tabla por contratista e impacto pre/post de tareas completadas.
+- **Resumen**: cobertura plan↔calidad y tabla por contratista.
 - Lista nodos del plan y/o de calidad, con filtros por contratista, evento, tarea y búsqueda.
 - Selección múltiple para ver evolución diaria de una métrica (QR por defecto).
 - Marca en el gráfico las tareas **COMPLETADA** del plan.
