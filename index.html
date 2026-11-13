@@ -1,94 +1,91 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Napoli Pizzas</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Nodos: Plan MPR vs calidad</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <img src="https://i.imgur.com/sdcKDxG.jpeg" alt="Imagen del encabezado" class="header-img">                
-        <h1>Napoli Pizzas</h1>
-            <nav>
-                <ul>
-                     <li><a href="#inicio">Inicio</a></li>
-                     <li><a href="#productos">Productos</a></li>
-                     <li><a href="#reseñas">Reseñas</a></li>
-                     <li><a href="#contacto">Contacto</a></li>
-                </ul>
-            </nav>
+  <main>
+    <header class="top">
+      <div>
+        <h1>Nodos: Plan MPR vs calidad</h1>
+        <p class="s">Se relacionan por nombre de nodo (en el plan, las patas L/R se agrupan en el nodo base). Tocá filas para seleccionar y ver su evolución.</p>
+      </div>
+      <button type="button" class="g" id="theme" aria-label="Cambiar tema">Tema</button>
     </header>
-    <main>
-        <section id="inicio">
-            <h2>Bienvenidos</h2>
-        </section>
-        <section id="productos">
-            <h2>Productos</h2>
-            <!-- Contenedor Flexbox -->
-         <div class="flex-container">
-            <!-- Elementos flexibles -->
-            <div class="flex-item item1">Focaccia</div>
-            <div class="flex-item item2">Margarita</div>
-            <div class="flex-item item3">Fugazeta</div>
-            <div class="flex-item item4">Calabresa</div>
-            <div class="flex-item item5">Americana</div>
-            <div class="flex-item item6">Morrones</div>
-          </div>
-        </section>
-        <section id="reseñas">
-            <h2>Reseñas</h2>
-            <div class="grid-container">
-                <!-- Reseñas -->
-                <div class="grid-item">Riquisima</div>
-                <div class="grid-item">Normal</div>
-                <div class="grid-item">No me asombro</div>
-            </div>
-        </section>
-        <section id="contacto">
-            <h2>Contacto</h2>
 
+    <section class="card" aria-labelledby="lista-title">
+      <div class="f between">
+        <h2 id="lista-title">Lista de nodos</h2>
+        <div class="f" id="chips" aria-live="polite"></div>
+      </div>
 
-            <form
+      <div class="filters">
+        <input type="search" id="q" placeholder="Buscar nodo o ID…" autocomplete="off" enterkeyhint="search">
+        <select id="ct" aria-label="Contratista"></select>
+        <select id="es" aria-label="Estado del evento"></select>
+        <select id="ts" aria-label="Estado de tarea"></select>
+        <label class="chk"><input type="checkbox" id="lk"> Solo con datos en ambos</label>
+        <label class="chk"><input type="checkbox" id="only"> Solo seleccionados</label>
+      </div>
 
-            action="https://formspree.io/f/xjkvrjbz"
-            method="POST"
-            id="contact-form"
-            onsubmit="return clearFields()"
-            >
-                <label for="nombre">Nombre:</label>
-                <input type="text" id="nombre" name="nombre">
-                <label for="email">Correo Electrónico:</label>
-                <input type="email" id="email" name="email">
-                <label for="mensaje">Mensaje:</label>
-                <textarea id="mensaje" name="mensaje"></textarea>
-                <button type="submit">Enviar</button>
-            </form>
-            <script>
-                // Función para limpiar los campos después de enviar el formulario
-                function clearFields() {
-                    // Validar si los campos están llenos
-                    const nombre = document.getElementById('nombre').value;
-                    const email = document.getElementById('email').value;
-                    const mensaje = document.getElementById('mensaje').value;
-                    
-                    if (nombre && email && mensaje) {
-                        // Borra los valores de los campos después del envío si los campos no están vacíos
-                        setTimeout(function() {
-                            document.getElementById('nombre').value = '';
-                            document.getElementById('email').value = '';
-                            document.getElementById('mensaje').value = '';
-                        }, 500); // Espera medio segundo antes de borrar los campos
-                    }
-            
-                    return true;  // Asegura que el formulario se envíe correctamente
-                }
-            </script>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2024 Pre entrega</p>
-    </footer>
+      <div class="f between">
+        <div class="f">
+          <button type="button" class="g" id="sa">Seleccionar visibles</button>
+          <button type="button" class="g" id="sc">Limpiar selección</button>
+        </div>
+        <span class="s" id="cnt" aria-live="polite"></span>
+      </div>
+
+      <div class="tw" role="region" aria-label="Tabla de nodos" tabindex="0">
+        <table>
+          <thead>
+            <tr>
+              <th class="chkcol"></th>
+              <th><button type="button" class="th" data-sort="nodo">Nodo</button></th>
+              <th><button type="button" class="th" data-sort="calidad">Calidad</button></th>
+              <th><button type="button" class="th" data-sort="contratista">Contratista (plan)</button></th>
+              <th><button type="button" class="th" data-sort="evento">Evento</button></th>
+              <th>Tareas</th>
+              <th class="n"><button type="button" class="th" data-sort="metric" id="hq"></button></th>
+              <th class="n"><button type="button" class="th" data-sort="delta">Δ período</button></th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+        <p class="empty s" id="empty" hidden>No hay nodos con esos filtros.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="sel-title">
+      <div class="f between">
+        <h2 id="sel-title">Selección</h2>
+        <span class="s" id="sn" aria-live="polite"></span>
+      </div>
+
+      <div class="f wrap">
+        <label class="inline">
+          Métrica
+          <select id="mt" aria-label="Métrica de calidad"></select>
+        </label>
+        <button type="button" class="g" id="cp">Copiar tabla</button>
+        <button type="button" class="g" id="dl">Descargar CSV</button>
+      </div>
+
+      <div class="kpis" id="kpis" hidden></div>
+      <div id="ch" class="chart"></div>
+      <div class="lg" id="lg"></div>
+
+      <div class="tw" style="margin-top:10px" role="region" aria-label="Detalle por día">
+        <table id="dt"></table>
+      </div>
+    </section>
+  </main>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
