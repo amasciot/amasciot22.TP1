@@ -1,7 +1,22 @@
-(() => {
-  const D = window.NODOS_DATA;
+(async () => {
+  if (window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.min.js";
+  }
+
+  let sourceMeta = { sample: true };
+  let D = window.NODOS_DATA;
+  try {
+    const stored = window.NodosImport && (await window.NodosImport.loadDataset());
+    if (stored && stored.data && stored.data.csv && stored.data.plan) {
+      D = stored.data;
+      sourceMeta = stored.meta || { sample: false };
+    }
+  } catch {
+    /* keep sample */
+  }
+
   if (!D) {
-    document.body.innerHTML = "<main><p>No se pudo cargar <code>data.js</code>.</p></main>";
+    document.body.innerHTML = "<main><p>No se pudo cargar datos.</p></main>";
     return;
   }
 
@@ -610,8 +625,47 @@
     .map((t) => `<span class="b">${t}</span>`)
     .join("");
 
+  if (sourceMeta.sample) {
+    $("src").textContent = "Dataset de ejemplo embebido";
+  } else {
+    $("src").textContent = `Cargado: ${sourceMeta.csvName || "CSV"} + ${sourceMeta.pdfName || "PDF"} · ${sourceMeta.linked ?? "?"} vinculados`;
+  }
+
   loadState();
   updateThemeButton();
+
+  const setLoadMsg = (text, kind) => {
+    const el = $("load-msg");
+    el.textContent = text;
+    el.classList.remove("ok", "err");
+    if (kind) el.classList.add(kind);
+  };
+
+  $("load").onclick = async () => {
+    const csvFile = $("f-csv").files && $("f-csv").files[0];
+    const pdfFile = $("f-pdf").files && $("f-pdf").files[0];
+    $("load").disabled = true;
+    setLoadMsg("Procesando archivos…");
+    try {
+      const { data, meta } = await window.NodosImport.buildFromFiles(csvFile, pdfFile);
+      await window.NodosImport.saveDataset(data, meta);
+      setLoadMsg(`Listo: ${meta.qualityNodes} nodos calidad · ${meta.planNodes} plan · ${meta.linked} vinculados. Recargando…`, "ok");
+      setTimeout(() => location.reload(), 400);
+    } catch (err) {
+      setLoadMsg(err.message || String(err), "err");
+      $("load").disabled = false;
+    }
+  };
+
+  $("reset-data").onclick = async () => {
+    try {
+      await window.NodosImport.clearDataset();
+      setLoadMsg("Volviendo al dataset de ejemplo…", "ok");
+      setTimeout(() => location.reload(), 300);
+    } catch (err) {
+      setLoadMsg(err.message || String(err), "err");
+    }
+  };
 
   $("tb").addEventListener("click", (e) => {
     const r = e.target.closest("tr[data-k]");
