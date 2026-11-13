@@ -81,7 +81,65 @@ h2 {
   margin: 0;
 }
 
+.h3 {
+  font-size: 0.86rem;
+  margin: 0 0 8px;
+  font-weight: 650;
+}
+
 .s { color: var(--mut); margin: 0; }
+
+.cov {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+
+.cov button {
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  color: var(--tx);
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font: inherit;
+  text-align: left;
+}
+
+.cov button .n {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cov button .l {
+  display: block;
+  color: var(--mut);
+  font-size: 11px;
+}
+
+.cov button.on {
+  border-color: color-mix(in srgb, var(--ac) 60%, var(--bd));
+  background: color-mix(in srgb, var(--ac) 12%, transparent);
+}
+
+.cov button:focus-visible {
+  outline: 2px solid var(--ac);
+  outline-offset: 2px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 14px;
+}
+
+.tw.short { max-height: 260px; }
+
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; }
+}
 
 .card {
   background: var(--card);

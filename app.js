@@ -11,7 +11,7 @@
   const COL = ["#1f6feb", "#d9480f", "#2b8a3e", "#9c36b5", "#c2255c", "#0b7285", "#e67700", "#5f3dc4", "#495057", "#a61e4d"];
   const LIMIT = 300;
   const CHART_LIMIT = 10;
-  const STORE_KEY = "nodos-plan-calidad-v1";
+  const STORE_KEY = "nodos-plan-calidad-v2";
 
   const MET_LABELS = {
     peorDsFecPre: "Peor DS FEC pre",
@@ -36,9 +36,13 @@
   };
 
   const keys = [...new Set([...Object.keys(D.csv), ...Object.keys(D.plan)])].sort();
+  const linkedKeys = keys.filter((k) => D.csv[k] && D.plan[k]);
+  const planOnlyKeys = keys.filter((k) => D.plan[k] && !D.csv[k]);
+  const qualityOnlyKeys = keys.filter((k) => D.csv[k] && !D.plan[k]);
   const sel = new Set();
   let sortKey = "nodo";
   let sortDir = 1;
+  let covMode = "all"; // all | linked | plan | quality
   let vis = [];
 
   const V = (k, d, m) => (D.csv[k] ? D.csv[k][d * M + m] : null);
@@ -88,6 +92,45 @@
 
   const qi = Math.max(0, D.mets.indexOf("QR"));
 
+  /** First completed task day (1-based in data), or null. */
+  const firstCompletedDay = (p) => {
+    if (!p) return null;
+    const days = p.t.filter((t) => t[0] === "COMPLETADA" && t[1] >= 1 && t[1] <= ND).map((t) => t[1]);
+    return days.length ? Math.min(...days) : null;
+  };
+
+  const avgAround = (k, m, dayIdx, before) => {
+    const vals = [];
+    if (before) {
+      for (let d = 0; d < dayIdx; d++) {
+        const v = V(k, d, m);
+        if (v != null) vals.push(v);
+      }
+    } else {
+      for (let d = dayIdx; d < ND; d++) {
+        const v = V(k, d, m);
+        if (v != null) vals.push(v);
+      }
+    }
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  };
+
+  function impactRows(m) {
+    return linkedKeys
+      .map((k) => {
+        const day = firstCompletedDay(D.plan[k]);
+        if (day == null) return null;
+        const dayIdx = day - 1;
+        const pre = avgAround(k, m, dayIdx, true);
+        const post = avgAround(k, m, dayIdx, false);
+        if (pre == null || post == null) return null;
+        return { k, day, pre, post, dlt: post - pre };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.dlt - a.dlt);
+  }
+
   function syncMetricHeader() {
     $("hq").textContent = `${labelMet(D.mets[+$("mt").value])} (último)`;
   }
@@ -107,6 +150,7 @@
       if (Array.isArray(st.sel)) st.sel.forEach((k) => { if (keys.includes(k)) sel.add(k); });
       if (st.sortKey) sortKey = st.sortKey;
       if (st.sortDir === 1 || st.sortDir === -1) sortDir = st.sortDir;
+      if (["all", "linked", "plan", "quality"].includes(st.covMode)) covMode = st.covMode;
       if (st.theme === "light" || st.theme === "dark") {
         document.documentElement.setAttribute("data-theme", st.theme);
       }
@@ -127,6 +171,7 @@
       sel: [...sel],
       sortKey,
       sortDir,
+      covMode,
       theme: document.documentElement.getAttribute("data-theme") || "",
     };
     try {
@@ -154,8 +199,12 @@
 
     let out = keys.filter((k) => {
       const p = D.plan[k];
+      const hasCsv = !!D.csv[k];
+      if (covMode === "linked" && !(hasCsv && p)) return false;
+      if (covMode === "plan" && !(p && !hasCsv)) return false;
+      if (covMode === "quality" && !(hasCsv && !p)) return false;
       if (q && !(k.includes(q) || (p && p.ids.some((i) => i.includes(q))))) return false;
-      if (lk && !(D.csv[k] && p)) return false;
+      if (lk && !(hasCsv && p)) return false;
       if (only && !sel.has(k)) return false;
       if (ct && !(p && p.c === ct)) return false;
       if (es && !(p && p.e.includes(es))) return false;
@@ -386,9 +435,128 @@
     saveState();
   }
 
+  function renderCoverage() {
+    const pct = Object.keys(D.plan).length
+      ? Math.round((linkedKeys.length / Object.keys(D.plan).length) * 1000) / 10
+      : 0;
+    const items = [
+      ["all", keys.length, "Todos"],
+      ["linked", linkedKeys.length, `Vinculados (${pct}% del plan)`],
+      ["plan", planOnlyKeys.length, "Solo plan"],
+      ["quality", qualityOnlyKeys.length, "Solo calidad"],
+    ];
+    $("cov").innerHTML = items
+      .map(
+        ([mode, n, label]) =>
+          `<button type="button" data-cov="${mode}" class="${covMode === mode ? "on" : ""}" aria-pressed="${covMode === mode}">
+            <span class="n">${n}</span><span class="l">${label}</span>
+          </button>`
+      )
+      .join("");
+  }
+
+  function renderContractors() {
+    const by = {};
+    Object.entries(D.plan).forEach(([k, p]) => {
+      const c = p.c || "—";
+      if (!by[c]) by[c] = { plan: 0, linked: 0, open: 0, comp: 0 };
+      by[c].plan += 1;
+      if (D.csv[k]) by[c].linked += 1;
+      if (p.e.includes("Abierto")) by[c].open += 1;
+      if (p.t.some((t) => t[0] === "COMPLETADA")) by[c].comp += 1;
+    });
+    const rows = Object.entries(by).sort((a, b) => b[1].plan - a[1].plan || a[0].localeCompare(b[0], "es"));
+    $("ctb").innerHTML = rows
+      .map(([c, v]) => {
+        const cov = v.plan ? Math.round((v.linked / v.plan) * 1000) / 10 : 0;
+        return `<tr class="r ct-row" data-c="${c.replace(/"/g, "&quot;")}">
+          <td>${c}</td>
+          <td class="n">${v.plan}</td>
+          <td class="n">${v.linked}</td>
+          <td class="n">${v.open}</td>
+          <td class="n">${v.comp}</td>
+          <td class="n">${cov}%</td>
+        </tr>`;
+      })
+      .join("");
+  }
+
+  function renderImpact() {
+    const m = +$("mt").value;
+    const rows = impactRows(m);
+    $("impact-note").textContent = rows.length
+      ? `Promedio de ${labelMet(D.mets[m])} antes vs desde el primer día con tarea COMPLETADA (${rows.length} nodos vinculados).`
+      : `No hay nodos vinculados con tarea COMPLETADA y datos de ${labelMet(D.mets[m])}.`;
+
+    if (!rows.length) {
+      $("impact-kpis").innerHTML = "";
+      $("itb").innerHTML = "";
+      return;
+    }
+
+    const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const dAvg = avg(rows.map((r) => r.dlt));
+    const improved = rows.filter((r) => r.dlt > 0).length;
+    $("impact-kpis").innerHTML = [
+      ["Nodos", String(rows.length)],
+      ["Δ promedio", (dAvg > 0 ? "+" : "") + fmt(dAvg)],
+      ["Mejoraron", `${improved}/${rows.length}`],
+    ]
+      .map(([l, v]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span></div>`)
+      .join("");
+
+    $("itb").innerHTML = rows
+      .map(
+        (r) => `<tr class="r impact-row" data-k="${r.k}">
+          <td>${r.k}</td>
+          <td>${D.days[r.day - 1]}</td>
+          <td class="n">${fmt(r.pre)}</td>
+          <td class="n">${fmt(r.post)}</td>
+          <td class="n">${deltaBadge(r.dlt)}</td>
+        </tr>`
+      )
+      .join("");
+  }
+
+  function resumen() {
+    renderCoverage();
+    renderContractors();
+    renderImpact();
+  }
+
   function all() {
+    resumen();
     list();
     detail();
+  }
+
+  function setCovMode(mode) {
+    covMode = mode;
+    if (mode === "linked") $("lk").checked = false;
+    list();
+    renderCoverage();
+    saveState();
+  }
+
+  function downloadUnmatched() {
+    const rows = [
+      ["Nodo", "Contratista", "Evento", "Tareas"].join(","),
+      ...planOnlyKeys.map((k) => {
+        const p = D.plan[k];
+        const esc = (v) => {
+          const s = String(v ?? "");
+          return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        return [k, p.c, p.e.join("; "), tsum(p)].map(esc).join(",");
+      }),
+    ].join("\n");
+    const blob = new Blob([rows], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plan-sin-calidad.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function tableText() {
@@ -433,11 +601,10 @@
   $("mt").innerHTML = D.mets.map((m, i) => `<option value="${i}"${i === qi ? " selected" : ""}>${labelMet(m)}</option>`).join("");
   syncMetricHeader();
 
-  const linked = keys.filter((k) => D.csv[k] && D.plan[k]).length;
   $("chips").innerHTML = [
     `${Object.keys(D.csv).length} nodos con calidad`,
     `${Object.keys(D.plan).length} nodos en el plan`,
-    `${linked} vinculados en ambos`,
+    `${linkedKeys.length} vinculados en ambos`,
     `Días: ${D.days[0]} a ${D.days[ND - 1]}`,
   ]
     .map((t) => `<span class="b">${t}</span>`)
@@ -455,6 +622,42 @@
     all();
   });
 
+  $("cov").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-cov]");
+    if (!btn) return;
+    setCovMode(btn.dataset.cov);
+  });
+
+  $("ctb").addEventListener("click", (e) => {
+    const r = e.target.closest("tr[data-c]");
+    if (!r) return;
+    $("ct").value = r.dataset.c;
+    covMode = "all";
+    $("lk").checked = false;
+    list();
+    renderCoverage();
+    saveState();
+    $("lista-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  $("itb").addEventListener("click", (e) => {
+    const r = e.target.closest("tr[data-k]");
+    if (!r) return;
+    const k = r.dataset.k;
+    sel.add(k);
+    setCovMode("linked");
+    all();
+    $("sel-title").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  $("pick-linked").onclick = () => {
+    setCovMode("linked");
+    linkedKeys.forEach((k) => sel.add(k));
+    all();
+  };
+
+  $("dl-unmatched").onclick = downloadUnmatched;
+
   $("sa").onclick = () => {
     vis.forEach((k) => sel.add(k));
     all();
@@ -465,12 +668,21 @@
   };
 
   ["q", "ct", "es", "ts", "lk", "only"].forEach((id) => {
-    $(id).addEventListener("input", list);
-    $(id).addEventListener("change", list);
+    $(id).addEventListener("input", () => {
+      if (id === "lk" && $("lk").checked) covMode = "all";
+      list();
+      renderCoverage();
+    });
+    $(id).addEventListener("change", () => {
+      if (id === "lk" && $("lk").checked) covMode = "all";
+      list();
+      renderCoverage();
+    });
   });
   $("mt").onchange = () => {
     list();
     detail();
+    renderImpact();
   };
 
   document.querySelectorAll("button.th[data-sort]").forEach((btn) => {
