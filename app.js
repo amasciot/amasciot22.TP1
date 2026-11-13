@@ -106,45 +106,6 @@
 
   const qi = Math.max(0, D.mets.indexOf("QR"));
 
-  /** First completed task day (1-based in data), or null. */
-  const firstCompletedDay = (p) => {
-    if (!p) return null;
-    const days = p.t.filter((t) => t[0] === "COMPLETADA" && t[1] >= 1 && t[1] <= ND).map((t) => t[1]);
-    return days.length ? Math.min(...days) : null;
-  };
-
-  const avgAround = (k, m, dayIdx, before) => {
-    const vals = [];
-    if (before) {
-      for (let d = 0; d < dayIdx; d++) {
-        const v = V(k, d, m);
-        if (v != null) vals.push(v);
-      }
-    } else {
-      for (let d = dayIdx; d < ND; d++) {
-        const v = V(k, d, m);
-        if (v != null) vals.push(v);
-      }
-    }
-    if (!vals.length) return null;
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  };
-
-  function impactRows(m) {
-    return linkedKeys
-      .map((k) => {
-        const day = firstCompletedDay(D.plan[k]);
-        if (day == null) return null;
-        const dayIdx = day - 1;
-        const pre = avgAround(k, m, dayIdx, true);
-        const post = avgAround(k, m, dayIdx, false);
-        if (pre == null || post == null) return null;
-        return { k, day, pre, post, dlt: post - pre };
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.dlt - a.dlt);
-  }
-
   function syncMetricHeader() {
     $("hq").textContent = `${labelMet(D.mets[+$("mt").value])} (último)`;
   }
@@ -492,47 +453,9 @@
       .join("");
   }
 
-  function renderImpact() {
-    const m = +$("mt").value;
-    const rows = impactRows(m);
-    $("impact-note").textContent = rows.length
-      ? `Promedio de ${labelMet(D.mets[m])} antes vs desde el primer día con tarea COMPLETADA (${rows.length} nodos vinculados).`
-      : `No hay nodos vinculados con tarea COMPLETADA y datos de ${labelMet(D.mets[m])}.`;
-
-    if (!rows.length) {
-      $("impact-kpis").innerHTML = "";
-      $("itb").innerHTML = "";
-      return;
-    }
-
-    const avg = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
-    const dAvg = avg(rows.map((r) => r.dlt));
-    const improved = rows.filter((r) => r.dlt > 0).length;
-    $("impact-kpis").innerHTML = [
-      ["Nodos", String(rows.length)],
-      ["Δ promedio", (dAvg > 0 ? "+" : "") + fmt(dAvg)],
-      ["Mejoraron", `${improved}/${rows.length}`],
-    ]
-      .map(([l, v]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span></div>`)
-      .join("");
-
-    $("itb").innerHTML = rows
-      .map(
-        (r) => `<tr class="r impact-row" data-k="${r.k}">
-          <td>${r.k}</td>
-          <td>${D.days[r.day - 1]}</td>
-          <td class="n">${fmt(r.pre)}</td>
-          <td class="n">${fmt(r.post)}</td>
-          <td class="n">${deltaBadge(r.dlt)}</td>
-        </tr>`
-      )
-      .join("");
-  }
-
   function resumen() {
     renderCoverage();
     renderContractors();
-    renderImpact();
   }
 
   function all() {
@@ -690,16 +613,6 @@
     $("lista-title").scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
-  $("itb").addEventListener("click", (e) => {
-    const r = e.target.closest("tr[data-k]");
-    if (!r) return;
-    const k = r.dataset.k;
-    sel.add(k);
-    setCovMode("linked");
-    all();
-    $("sel-title").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-
   $("pick-linked").onclick = () => {
     setCovMode("linked");
     sel.clear();
@@ -742,7 +655,6 @@
   $("mt").onchange = () => {
     list();
     detail();
-    renderImpact();
   };
 
   document.querySelectorAll("button.th[data-sort]").forEach((btn) => {
