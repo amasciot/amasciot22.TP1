@@ -528,6 +528,69 @@
     URL.revokeObjectURL(url);
   }
 
+  function downloadPdf() {
+    if (!sel.size) {
+      $("pdf").textContent = "Sin selección";
+      setTimeout(() => { $("pdf").textContent = "Descargar PDF"; }, 1200);
+      return;
+    }
+    const jsPdfNS = window.jspdf;
+    if (!jsPdfNS || !jsPdfNS.jsPDF) {
+      $("pdf").textContent = "PDF no disponible";
+      setTimeout(() => { $("pdf").textContent = "Descargar PDF"; }, 1500);
+      return;
+    }
+
+    const m = +$("mt").value;
+    const S = [...sel].sort();
+    const met = labelMet(D.mets[m]);
+    const head = ["Nodo", "Tareas", ...D.days, "Δ"];
+    const body = S.map((k) => {
+      const dlt = delta(k, m);
+      return [
+        k,
+        tsum(D.plan[k]),
+        ...D.days.map((_, d) => {
+          const v = V(k, d, m);
+          return v == null ? "—" : fmt(v);
+        }),
+        dlt == null ? "—" : (dlt > 0 ? "+" : "") + fmt(dlt),
+      ];
+    });
+
+    const doc = new jsPdfNS.jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const margin = 36;
+    doc.setFontSize(14);
+    doc.text("Nodos: Plan MPR vs calidad", margin, 40);
+    doc.setFontSize(10);
+    doc.setTextColor(80);
+    doc.text(`Métrica: ${met} · Días: ${D.days[0]} a ${D.days[ND - 1]} · ${S.length} nodos seleccionados`, margin, 58);
+    doc.setTextColor(0);
+
+    doc.autoTable({
+      startY: 72,
+      head: [head],
+      body,
+      styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak", halign: "right" },
+      headStyles: { fillColor: [31, 111, 235], textColor: 255, halign: "center" },
+      columnStyles: {
+        0: { halign: "left", cellWidth: 70 },
+        1: { halign: "left", cellWidth: 90 },
+      },
+      margin: { left: margin, right: margin },
+      didDrawPage(data) {
+        const page = doc.internal.getNumberOfPages();
+        doc.setFontSize(8);
+        doc.setTextColor(120);
+        doc.text(`Página ${page}`, doc.internal.pageSize.getWidth() - margin, doc.internal.pageSize.getHeight() - 16, { align: "right" });
+      },
+    });
+
+    doc.save(`nodos-${D.mets[m].replace(/[^\w.-]+/g, "_")}.pdf`);
+    $("pdf").textContent = "PDF listo ✓";
+    setTimeout(() => { $("pdf").textContent = "Descargar PDF"; }, 1500);
+  }
+
   // init controls
   opt("ct", "Todos los contratistas", uniq((p) => [p.c]));
   opt("es", "Estado del evento", uniq((p) => p.e));
@@ -685,6 +748,7 @@
   };
 
   $("dl").onclick = downloadCsv;
+  $("pdf").onclick = downloadPdf;
 
   $("theme").onclick = () => {
     const cur = document.documentElement.getAttribute("data-theme");
